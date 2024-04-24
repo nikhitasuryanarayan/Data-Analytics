@@ -1,0 +1,61 @@
+---
+title: "Dashboard using Quarto - Assignment 2"
+author: "Nikhita Suryanarayan - 23267911"
+format: html
+---
+
+# <span style="color:black"> Social Analysis of Young Children losing their parents </span>
+
+
+While looking at the number of children losing their parents, we will try to understand why this might be happening by looking into their **health expenditure and GDP per capita**. Also we will focus on which countries are affected more and will try to find out what might happen to these children who lose their parents at a very early age. We will also focus on the **percentage of children** out of the total children population losing their parents, as it is a better ratio indicator and not just a mere number.
+
+*Metric under focus: % of children (0-17 years) losing their parents (one or both of them)* 
+
+
+```{r}
+
+```
+
+Eventhough the total no of children losing their parents has remained a constant at the global level, the % of children losing their parents on comparison to the whole children population has seen a **decline**, which is a good sign. Hence, studying the percentage metric is better as it compares the ratio among countires.
+
+-	***Children - % of total population: 28.61%***
+-	***% of children losing their parents: 7.64%***
+-	***Total no. of children losing their parents: 83.06M***
+-	***Average life expectancy at birth: 70.8 years***
+
+
+```{r}
+
+```
+
+From the global visual, Africa seems to have the high values, hence we will dive deeper into Africa. 
+
+
+## Health Expenditure analysis on a few sample countries:
+
+Countries that spend above world average on health have their “% children losing their parents" metric less than the world median in most of the cases.
+Most of the countries that have high "% of children losing their parents" spend much less on health than the world average. Moreover, as the health expenditure per capita is above a certain cap, % of children losing their parents is significantly lower.
+
+
+## Looking into the GDP per capita of poor performing countries 
+To check why these poor performing countries have such less "Health expenditure per capita", let us check a major economic factor - their "GDP per capita".
+Most of the poor performing countries from the above plot have a lesser GDP per capita than the world average, which means due to poorer economy, government spends lesser on healthcare, leading to more parents' deaths, increasing children's chances of losing their parents at a young age.
+
+
+## Quick Analysis on the worst countries that can affect these children 
+
+1.	Avg poverty Rate: 45.14%
+2.	Avg Child Labour Rate: 38.08%
+
+The countries that have high % of children losing their parents seem to have high poverty rates, which indicate that children might be forced into taking up work, as they don't have parents' support.
+
+Hence, I looked into the child labour rates for these countries and it seems to be high as well. Thus children who loose their parents in these countries are highly vulnerable to child labour.
+
+
+## References: 
+
+1.	World Bank (2019). Current health expenditure per capita (current US$) | Data. [online] Worldbank.org. Available at: <https://data.worldbank.org/indicator/SH.XPD.CHEX.PC.CD.> 
+2.	 Worldbank.org. (2019). Children in employment, total (% of children ages 7-14) | Data. [online] Available at: <https://data.worldbank.org/indicator/SL.TLF.0714.ZS.>
+3.	data.worldbank.org. (n.d.). Poverty | Data. [online] Available at: <https://data.worldbank.org/topic/11.> 
+
+

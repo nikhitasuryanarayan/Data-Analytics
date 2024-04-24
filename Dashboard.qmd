@@ -1,0 +1,281 @@
+---
+title: "Chilldren losing Parents - Analysis Dashboard"
+author: "Nikhita Suryanarayan - 23267911"
+format: html
+editor: visual
+execute: 
+  echo: false
+  warning: false
+  message: false
+---
+
+# <span style="color:black"> Social Analysis of Young Children losing their parents </span>
+
+
+While looking at the number of children losing their parents, we will try to understand why this might be happening by looking into their **health expenditure and GDP per capita**. Also we will focus on which countries are affected more and will try to find out what might happen to these children who lose their parents at a very early age. We will also focus on the **percentage of children** out of the total children population losing their parents, as it is a better ratio indicator and not just a mere number.
+
+*Metric under focus: % of children (0-17 years) losing their parents (one or both of them)* 
+
+-	*Children - % of total population*
+-	*% of children losing their parents*
+-	*Total no. of children losing their parents*
+-	*Average life expectancy at birth*
+
+```{r}
+#BAR CHART & LINE CHART
+library(ggplot2)
+library(patchwork)
+library(readr)
+library(dplyr)
+library(knitr)
+library(rmarkdown)
+library(maps)
+
+data <- read_csv("unicef_inicator_2.csv")
+
+data$obs_value <- data$`Estimated number of children (aged 0-17 years) who have lost one or both parents`
+data <- data[order(data$obs_value), ]
+data$year <- as.numeric(data$`year`)
+
+filtered_data <- filter(data,year >= 2000)
+filtered_data <-filter(filtered_data, country != 'Uzbekistan')
+
+population_meta_data <- read_csv("unicef_metadata.csv")
+
+children_population_data <- read_csv("children_population.csv")
+children_population_data <- inner_join(children_population_data,population_meta_data,by=c("year","country") )
+children_population_data$total_children_population <- children_population_data$`Children population` /100 * children_population_data$`Population, total`
+
+
+grouped_children_population_data <- children_population_data %>%
+  group_by(year) %>%
+  summarise(total_children_population = sum(total_children_population))
+
+
+grouped_data <- filtered_data %>%
+  group_by(year) %>%
+  summarise(sum_value = sum(obs_value))
+
+joined_data <- inner_join(grouped_data, grouped_children_population_data, by = "year")
+joined_data$percentage <- joined_data$sum_value * 100 / joined_data$total_children_population
+
+# Create a bar chart
+bar_plot <- ggplot(grouped_data, aes(x = year, y = sum_value)) +
+  geom_bar(stat = "identity", fill = "skyblue", alpha = 0.7) +
+  scale_y_continuous(labels = scales::comma_format(scale = 1e-6, suffix = "M"), limits = c(0, 100000000)) +
+  theme_minimal() +
+  labs(x = "Year", y = "Total no. of children losing one or both parents")  
+
+#print(bar_plot)
+
+# Create a line plot with connected data points
+line_plot <- ggplot(joined_data, aes(x = year, y = percentage)) +
+  geom_point(color="red",size=1) +
+  geom_line(color = "red", size = 1) +    # Connect data points with lines
+  scale_y_continuous(labels = scales::comma_format(suffix = "%"), limits = c(0, 20)) +
+  labs(x = "Year", y = "% of children losing their parents")
+
+combined_plot <- bar_plot + line_plot
+
+# Print the combined plot
+print(combined_plot)
+
+```
+
+From the above plots, **eventhough the total no of children losing their parents has remained a constant** at the global level, the **% of children losing their parents on comparison to the whole children population has seen a decline**, which is a good sign. Hence, studying the percentage metric is better as it compares the ratio among countires.
+
+
+```{r}
+#WORLD MAP
+grouped_children_population_data <- children_population_data %>%
+  group_by(country) %>%
+  summarise(total_children_population = sum(total_children_population))
+
+
+grouped_data <- filtered_data %>%
+  group_by(country) %>%
+  summarise(sum_value = sum(obs_value))
+
+joined_data <- inner_join(grouped_data, grouped_children_population_data, by = "country")
+joined_data$percentage <- joined_data$sum_value * 100 / joined_data$total_children_population
+
+poor_performing_countries <- filter(joined_data, percentage > 10)
+poor_performing_countries <- as.vector(poor_performing_countries$country)
+
+world_map <- map_data("world")
+
+# Merge country data with world map data
+merged_data <- merge(world_map, joined_data, by.x = "region", by.y = "country", all.x = TRUE)
+
+heatmap_plot <- ggplot() +
+  geom_polygon(data =  merged_data, aes(x = long, y = lat, group = group, fill = percentage)) +
+  #  scale_fill_gradient(low = "blue", high = "lightblue", na.value = "grey") +
+  scale_fill_gradient(low = "yellow", high = "red", na.value = "grey") +
+  theme_void()
+
+# Show the plot
+print(heatmap_plot)
+```
+
+From the global visual, we can see that Africa seems to have the high values and the percentage of children losing their parents is more.
+
+## Quick Analysis on the worst countries that can affect these children 
+
+To understand what factors might affect the percentage of chilren losing their parents, I have taken the below two factors. 
+
+1.	Average poverty Rate
+2.	Average Child Labour Rate
+
+
+```{r}
+#POVERTY SCATTER PLOT
+
+child_labour_data <- read_csv('children_employment.csv')
+
+child_labour_data <- child_labour_data %>%
+  group_by(Country) %>%
+  summarise(total_child_labour_rate = sum(`% of children in employment ages 7-14`))
+
+
+poverty_rate <- read_csv('poverty_rate.csv')
+
+poverty_rate <- poverty_rate %>%
+  group_by(Country) %>%
+  summarise(total_poverty_rate = sum(`Poverty rate at $3.65 a day (PPP adjusted)`))
+
+
+poverty_child_labour_data <- inner_join(child_labour_data,poverty_rate, by = 'Country')
+
+# Create the scatter plot using ggplot
+ggplot(data = poverty_child_labour_data, aes(x = total_poverty_rate, y = total_child_labour_rate )) +
+  geom_point(color = ifelse(poverty_child_labour_data$Country %in% poor_performing_countries ,"red","blue"), size = 3) +
+  scale_y_continuous(labels = scales::comma_format(suffix = "%"), limits = c(0, 100)) +
+  scale_x_continuous(labels = scales::comma_format(suffix = "%"), limits = c(0, 100)) +
+  labs(#title = "Quick Analysis on the worst countries that can affect these children",
+       x = "Poverty rate in %",
+       y = "Child labour rate in %")
+```
+
+<div style="display:flex;justify-content:center;margin-bottom:20px;">
+ <div>
+  <p style="color:black;font-size:16px;text-align:center;font-weight:500;"> Legend </p>
+<div style="display:flex;align-items:center;">
+  <div style="width:10px;height:10px;background-color:red;margin-right:10px;">
+</div>
+<p style="font-size:14px;margin:0px;">Countries where % of children losing their parents is greater than 10% </p>
+</div>
+
+<div style="display:flex;align-items:center;">
+  <div style="width:10px;height:10px;background-color:blue;margin-right:10px;">
+</div>
+<p style="font-size:14px;margin:0px;">Other Countries</p>
+</div>
+ </div>
+</div>
+
+The countries that have high % of children losing their parents seem to have high poverty rates, which indicate that children might be forced into taking up work, as they don't have the support of parents.
+
+Hence, I looked into the child labour rates for these countries and it seems to be high as well. Thus children who loose their parents in these countries are highly vulnerable to child labour.
+
+
+
+
+To understand in depth about why children are losing their parents, let us now look at the analysis based on the Health Expenditure and GDP per capita.
+
+
+## Health Expenditure analysis on a few sample countries:
+
+Countries that spend above world average on health have their “% children losing their parents" metric less than the world median in most of the cases.
+Most of the countries that have high "% of children losing their parents" spend much less on health than the world average. Moreover, as the health expenditure per capita is above a certain cap, % of children losing their parents is significantly lower.
+
+
+```{r}
+#HEALTH EXPENDITURE SCATTER PLOT
+
+health_exp_per_capita <- read_csv('health_exp_per_capita.csv')
+
+health_exp_per_capita <- health_exp_per_capita %>%
+  group_by(country) %>%
+  summarise(total_health_gdp = sum(`Health Exp per Capita (USD)`))
+
+joined_data <- inner_join(joined_data,health_exp_per_capita, by='country')                            
+
+# Create the scatter plot using ggplot
+ggplot(data = joined_data, aes(x = percentage, y = total_health_gdp )) +
+  geom_point(color = ifelse(joined_data$country %in% poor_performing_countries ,"red","blue"), size = 3) +
+  labs(#title = "Health Expenditure analysis on a few sample countries",
+       x = "% of children losing their parents",
+       y = "Health expenditure per capita (USD)")
+```
+
+<div style="display:flex;justify-content:center;">
+ <div>
+  <p style="color:black;font-size:16px;text-align:center;font-weight:500;"> Legend </p>
+<div style="display:flex;align-items:center;">
+  <div style="width:10px;height:10px;background-color:red;margin-right:10px;">
+</div>
+<p style="font-size:14px;margin:0px;">Countries where % of children losing their parents is greater than 10% </p>
+</div>
+
+<div style="display:flex;align-items:center;">
+  <div style="width:10px;height:10px;background-color:blue;margin-right:10px;">
+</div>
+<p style="font-size:14px;margin:0px;">Other Countries</p>
+</div>
+ </div>
+</div>
+
+
+## Looking into the GDP per capita of poor performing countries 
+To check why these poor performing countries have such less "Health expenditure per capita", let us check a major economic factor - their "GDP per capita".
+Most of the poor performing countries from the above plot have a lesser GDP per capita than the world average, which means due to a poorer economy, government spends lesser on healthcare, leading to more deaths of parents, increasing children's chances of losing their parents at a young age.
+
+
+```{r}
+#GDP SCATTER PLOT
+
+population_meta_data <- population_meta_data %>%
+  group_by(country) %>%
+  summarise(total_gdp_per_capita = sum(`GDP per capita (constant 2015 US$)`))
+
+
+joined_data <- inner_join(joined_data,population_meta_data, by='country')                            
+
+
+# Create the scatter plot using ggplot
+ggplot(data = joined_data, aes(x = percentage, y = total_gdp_per_capita )) +
+  geom_point(color = ifelse(joined_data$country %in% poor_performing_countries ,"red","blue"), size = 3) +
+  labs(#title = "Looking into the GDP per capita of poor performing countries",
+       x = "% of children losing their parents",
+       y = "GDP per capita (USD)")
+```
+<div style="display:flex;justify-content:center;">
+ <div>
+  <p style="color:black;font-size:16px;text-align:center;font-weight:500;"> Legend </p>
+<div style="display:flex;align-items:center;">
+  <div style="width:10px;height:10px;background-color:red;margin-right:10px;">
+</div>
+<p style="font-size:14px;margin:0px;">Countries where % of children losing their parents is greater than 10% </p>
+</div>
+
+<div style="display:flex;align-items:center;">
+  <div style="width:10px;height:10px;background-color:blue;margin-right:10px;">
+</div>
+<p style="font-size:14px;margin:0px;">Other Countries</p>
+</div>
+ </div>
+</div>
+
+
+## Conclusion:
+
+In summary, our analysis of children losing their parents shows that economic factors greatly influence this issue. While the total number of affected children remains steady worldwide, the percentage relative to the overall child population is decreasing, though not evenly distributed across regions. Especially in Africa, where poverty and child labor rates are high, children without parents are more at risk. Looking at healthcare spending and GDP per person, we see that countries with lower investment in healthcare and weaker economies have more children losing parents. This highlights the need for targeted efforts to support vulnerable children and break the cycle of poverty.
+
+
+## References: 
+
+1.	World Bank (2019). Current health expenditure per capita (current US$) | Data. [online] Worldbank.org. Available at: <https://data.worldbank.org/indicator/SH.XPD.CHEX.PC.CD.> 
+2.	 Worldbank.org. (2019). Children in employment, total (% of children ages 7-14) | Data. [online] Available at: <https://data.worldbank.org/indicator/SL.TLF.0714.ZS.>
+3.	data.worldbank.org. (n.d.). Poverty | Data. [online] Available at: <https://data.worldbank.org/topic/11.> 
+
+
